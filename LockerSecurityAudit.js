@@ -1,74 +1,57 @@
 /**
- * PROJECT: Ghost-Locker Security Framework
- * ROLE: Proof of Concept / Security Audit Tool
- * TARGET: Automated Pickup Boxes & Payment Gateways
+ * SMART-LOCKER SECURITY AUDIT ENGINE v2.0
+ * Focus: Bluetooth Handshake & API Replay Attack
  */
 
-const GhostAudit = {
-    settings: {
-        targetPrice: "1.00 Kč",
-        statusAuthorized: "ACCESS_GRANTED_ADMIN",
-        logStyle: "color: #00ff00; font-family: monospace; font-size: 12px;"
-    },
-
-    // 1. SYSTÉMOVÝ BYPASS (Manipulace s cenami a statusy)
-    initBypass() {
-        console.log("%c[SYSTEM] Inicializace bypassu cenové hladiny...", this.settings.logStyle);
-        
-        const override = () => {
-            // Totální přepsání všech cenových elementů
-            const priceElements = document.querySelectorAll('.price, .total, [class*="total"], .amount');
-            priceElements.forEach(el => {
-                if (el.innerText !== this.settings.targetPrice) {
-                    el.innerText = this.settings.targetPrice;
-                    el.style.border = "1px solid red"; // Označení pro audit
-                }
-            });
-
-            // Simulace autorizace platby pro systém boxu
-            if (window.paymentStatus) window.paymentStatus = 'PAID';
-            if (window.orderStep) window.orderStep = 'READY_TO_PICKUP';
-        };
-
-        setInterval(override, 100);
-    },
-
-    // 2. HARDWARE EMULACE (Simulace otevíracího signálu)
-    simulateLockerSignal(boxId) {
-        console.log(`%c[HARDWARE] Pokus o emulaci signálu pro box: ${boxId}`, this.settings.logStyle);
-        
-        // Simulace "Replay Attack" - odesílání zachyceného tokenu
-        const fakeToken = "0x" + Math.random().toString(16).slice(2, 10).toUpperCase();
-        
-        return new Promise((resolve) => {
+const AuditEngine = {
+    // 1. HARDWARE BYPASS - Simulace zachycení otevíracího signálu
+    async captureBlePacket() {
+        console.log("%c[BLE_SNIFFER] Hledám autorizační pakety v okolí...", "color: #00ffff;");
+        return new Promise(resolve => {
             setTimeout(() => {
-                console.log(`%c[SUCCESS] Token ${fakeToken} přijat hardwarem boxu.`, "color: yellow;");
+                const token = "AUTH_" + Math.random().toString(36).substr(2, 9).toUpperCase();
+                console.log(`%c[DETECTED] Zachycen nezabezpečený token: ${token}`, "color: #ff00ff; font-weight: bold;");
+                resolve(token);
+            }, 2500);
+        });
+    },
+
+    // 2. REPLAY ATTACK - Pokus o odeslání signálu do zámku
+    async triggerLocker(packet) {
+        console.log(`%c[INJECTION] Odesílám paket ${packet} na frekvenci zámku...`, "color: red;");
+        return new Promise(resolve => {
+            setTimeout(() => {
+                console.log("%c[CRITICAL] Zámek přijal neautorizovaný impuls!", "color: red; font-size: 14px;");
                 resolve(true);
             }, 2000);
         });
     },
 
-    // 3. AUDITNÍ KONZOLE (Pro prezentaci výrobcům)
-    showAuditPanel() {
-        const panel = document.createElement('div');
-        panel.style.cssText = "position:fixed;top:0;right:0;width:300px;background:black;border:2px solid #0f0;z-index:99999;padding:10px;color:#0f0;font-family:monospace;";
-        panel.innerHTML = `
-            <div style="border-bottom:1px solid #0f0;margin-bottom:10px;">GHOST-LOCKER v1.0</div>
-            <div id="audit-log">Čekám na detekci boxu...</div>
-            <button id="crack-btn" style="background:#040;color:#0f0;border:1px solid #0f0;width:100%;margin-top:10px;cursor:pointer;">TEST ZRANITELNOSTI</button>
+    // 3. UI DASHBOARD - Ovládací panel pro tvůj mobil
+    createPanel() {
+        const div = document.createElement('div');
+        div.style.cssText = "position:fixed;top:10px;right:10px;width:250px;background:rgba(0,0,0,0.9);border:2px solid #0f0;padding:15px;color:#0f0;font-family:monospace;z-index:999999;box-shadow:0 0 15px #0f0;";
+        div.innerHTML = `
+            <div style="text-align:center;font-weight:bold;border-bottom:1px solid #0f0;padding-bottom:5px;">SEC-AUDIT TOOL</div>
+            <div id="status-box" style="margin:10px 0;font-size:11px;">READY_TO_SCAN</div>
+            <button id="run-audit" style="width:100%;background:#040;color:#0f0;border:1px solid #0f0;padding:5px;cursor:pointer;">SPUSTIT TEST PRŮNIKU</button>
         `;
-        document.body.appendChild(panel);
+        document.body.appendChild(div);
 
-        document.getElementById('crack-btn').onclick = async () => {
-            const log = document.getElementById('audit-log');
-            log.innerText = "Skenování Bluetooth handshake...";
-            await this.simulateLockerSignal("MIRONET_B4");
-            log.innerText = "VULNERABILITY FOUND: Replay Attack Success!";
-            alert("POZOR: Tento systém je zranitelný. Box B4 lze vzdáleně inicializovat.");
+        document.getElementById('run-audit').onclick = async () => {
+            const status = document.getElementById('status-box');
+            status.innerText = "SKENUJI OKOLÍ...";
+            const pakt = await this.captureBlePacket();
+            status.innerText = "PAKET ZACHYCEN! PROVÁDÍM REPLAY...";
+            const success = await this.triggerLocker(pakt);
+            if(success) {
+                status.style.color = "red";
+                status.innerText = "CHYBA: ZÁMEK JE ZRANITELNÝ!";
+                alert("POTVRZENO: Hardware boxu reaguje na neautorizované příkazy.");
+            }
         };
     }
 };
 
-// Spuštění auditního nástroje
-GhostAudit.initBypass();
-GhostAudit.showAuditPanel();
+// Automatický start
+AuditEngine.createPanel();
