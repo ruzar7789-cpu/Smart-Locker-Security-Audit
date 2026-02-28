@@ -1,79 +1,96 @@
 /**
- * GHOST-LOCKER SERVICE WORKER v2.6 [MASTER INTEGRATION]
- * Assets caching + Active API Interception Layer
+ * GHOST-LOCKER SERVICE WORKER v2.7 [MASTER INTEGRATION]
+ * Modifikace: Aktivní Intercept Layer (Real-time Injector)
  */
 
-const CACHE_NAME = 'ghost-locker-cache-v2.6';
+const CACHE_NAME = 'ghost-locker-cache-v2.7';
+let bypassActive = false; // Globální stav pro vynucení bypassu
+
 const assets = [
     '/',
     '/index.html',
     '/LockerSecurityAudit.js'
 ];
 
-// 1. INSTALACE - Uložení souborů pro 100% offline přístup
 self.addEventListener('install', e => {
-    self.skipWaiting(); // Okamžité nasazení nové verze
+    self.skipWaiting();
     e.waitUntil(
-        caches.open(CACHE_NAME).then(cache => {
-            console.log('[SW] Archiving system assets...');
-            return cache.addAll(assets);
-        })
+        caches.open(CACHE_NAME).then(cache => cache.addAll(assets))
     );
 });
 
-// 2. AKTIVACE - Převzetí kontroly nad všemi klienty (taby)
 self.addEventListener('activate', e => {
-    e.waitUntil(
-        Promise.all([
-            self.clients.claim(),
-            caches.keys().then(keys => {
-                return Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)));
-            })
-        ])
-    );
+    e.waitUntil(self.clients.claim());
 });
 
 // 3. FETCH & INTERCEPT - Jádro simulace GhostStore
 self.addEventListener('fetch', e => {
     const url = new URL(e.request.url);
 
-    // Detekce API požadavků na stav objednávky/platby
-    if (url.pathname.includes('/api/v2/order') || url.pathname.includes('/status') || url.pathname.includes('/payment')) {
-        
-        e.respondWith(
-            fetch(e.request).then(response => {
-                console.log('[SW] INTERCEPTED LIVE API:', url.pathname);
-                return response;
-            }).catch(() => {
-                // FALLBACK: Pokud server neodpovídá (offline simulace), 
-                // podvrhneme natvrdo status "PAID" pro simulaci bypassu.
-                console.warn('[SW] SERVER OFFLINE - FORCING PAID STATUS RESPONSE');
-                
-                const ghostResponse = {
-                    status: "success",
-                    order_id: "GHOST-777",
-                    payment_status: "PAID",
-                    unlock_code: "0000",
-                    authorized: true
-                };
+    // Detekce API požadavků (rozšířeno o časté endpointy boxů)
+    const isOrderAPI = url.pathname.includes('/api/v') && 
+                       (url.pathname.includes('order') || 
+                        url.pathname.includes('status') || 
+                        url.pathname.includes('payment') ||
+                        url.pathname.includes('lock'));
 
-                return new Response(JSON.stringify(ghostResponse), {
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            })
+    if (isOrderAPI) {
+        e.respondWith(
+            (async () => {
+                try {
+                    // Pokud je bypass vypnutý, zkusíme reálnou síť
+                    if (!bypassActive) {
+                        const response = await fetch(e.request);
+                        return response;
+                    }
+
+                    // Pokud je bypass AKTIVNÍ, generujeme falešnou pozitivní odpověď okamžitě
+                    console.log(`[SW] INJECTING GHOST-DATA TO: ${url.pathname}`);
+                    
+                    const ghostResponse = {
+                        status: "success",
+                        order_id: "GHOST-" + Math.floor(Math.random() * 999),
+                        payment_status: "PAID",
+                        payment_state: "paid", // Některá API používají malá písmena
+                        authorized: true,
+                        unlock_code: "1234",
+                        can_open: true,
+                        error: null
+                    };
+
+                    return new Response(JSON.stringify(ghostResponse), {
+                        status: 200,
+                        statusText: 'OK',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*' 
+                        }
+                    });
+
+                } catch (err) {
+                    // Fallback při totálním výpadku
+                    return new Response(JSON.stringify({ status: "offline_bypass", payment_status: "PAID" }), {
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+            })()
         );
     } else {
-        // Standardní obsluha statických souborů
+        // Standardní cache pro zbytek
         e.respondWith(
             caches.match(e.request).then(res => res || fetch(e.request))
         );
     }
 });
 
-// 4. MESSAGE HANDLING - Příjem instrukcí z UI
+// 4. MESSAGE HANDLING - Zapnutí/Vypnutí bypassu z UI
 self.addEventListener('message', event => {
     if (event.data && event.data.type === 'TRIGGER_BYPASS') {
-        console.log('[SW] !!! GHOST-STORE BYPASS PROTOCOL ACTIVATED !!!');
-        // Zde by šlo implementovat globální flag pro vynucení offline odpovědi i při online stavu
+        bypassActive = true;
+        console.log('[SW] !!! GHOST-STORE BYPASS PROTOCOL ENGAGED !!!');
+    }
+    if (event.data && event.data.type === 'STOP_BYPASS') {
+        bypassActive = false;
+        console.log('[SW] BYPASS DISENGAGED');
     }
 });
